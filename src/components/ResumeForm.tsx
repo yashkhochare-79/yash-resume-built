@@ -3,8 +3,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, ArrowLeft, ArrowRight, User, GraduationCap, Briefcase, Code, Wrench } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, ArrowRight, User, GraduationCap, Briefcase, Code, Wrench, Sparkles, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useGenerateContent } from "@/hooks/useGenerateContent";
 
 interface ResumeFormProps {
   data: ResumeData;
@@ -23,6 +24,41 @@ const steps = [
 const ResumeForm = ({ data, onChange, onBack }: ResumeFormProps) => {
   const [step, setStep] = useState(0);
   const [skillInput, setSkillInput] = useState("");
+  const { generate, loading } = useGenerateContent();
+
+  const handleGenerateSummary = async () => {
+    const experienceSummary = data.experience.map(e => `${e.role} at ${e.company}`).join(", ");
+    const educationSummary = data.education.map(e => `${e.degree} ${e.field} from ${e.institution}`).join(", ");
+    const result = await generate("summary", {
+      fullName: data.personalInfo.fullName,
+      skills: data.skills,
+      experience: experienceSummary,
+      education: educationSummary,
+    });
+    if (result) updatePersonal("summary", result);
+  };
+
+  const handleGenerateExperience = async (id: string) => {
+    const exp = data.experience.find(e => e.id === id);
+    if (!exp) return;
+    const result = await generate("experience", {
+      role: exp.role,
+      company: exp.company,
+      description: exp.description,
+    }, id);
+    if (result) updateExperience(id, "description", result);
+  };
+
+  const handleGenerateProject = async (id: string) => {
+    const proj = data.projects.find(p => p.id === id);
+    if (!proj) return;
+    const result = await generate("project", {
+      name: proj.name,
+      technologies: proj.technologies,
+      description: proj.description,
+    }, id);
+    if (result) updateProject(id, "description", result);
+  };
 
   const updatePersonal = (field: string, value: string) => {
     onChange({ ...data, personalInfo: { ...data.personalInfo, [field]: value } });
@@ -141,7 +177,19 @@ const ResumeForm = ({ data, onChange, onBack }: ResumeFormProps) => {
               </div>
             </div>
             <div>
-              <Label className="text-sm font-medium text-foreground mb-1.5 block">Professional Summary</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="text-sm font-medium text-foreground">Professional Summary</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGenerateSummary}
+                  disabled={loading === "summary"}
+                  className="text-xs gap-1 text-secondary hover:text-secondary"
+                >
+                  {loading === "summary" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  AI Generate
+                </Button>
+              </div>
               <Textarea placeholder="Brief summary of your background and goals..." value={data.personalInfo.summary} onChange={(e) => updatePersonal("summary", e.target.value)} rows={4} />
             </div>
           </div>
@@ -214,7 +262,19 @@ const ResumeForm = ({ data, onChange, onBack }: ResumeFormProps) => {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium mb-1.5 block">Description</Label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label className="text-sm font-medium">Description</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleGenerateExperience(exp.id)}
+                      disabled={loading === `experience-${exp.id}`}
+                      className="text-xs gap-1 text-secondary hover:text-secondary"
+                    >
+                      {loading === `experience-${exp.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                      AI Generate
+                    </Button>
+                  </div>
                   <Textarea placeholder="Describe your responsibilities and achievements..." value={exp.description} onChange={(e) => updateExperience(exp.id, "description", e.target.value)} rows={3} />
                 </div>
               </div>
@@ -267,7 +327,19 @@ const ResumeForm = ({ data, onChange, onBack }: ResumeFormProps) => {
                   </div>
                 </div>
                 <div className="mb-4">
-                  <Label className="text-sm font-medium mb-1.5 block">Description</Label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label className="text-sm font-medium">Description</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleGenerateProject(proj.id)}
+                      disabled={loading === `project-${proj.id}`}
+                      className="text-xs gap-1 text-secondary hover:text-secondary"
+                    >
+                      {loading === `project-${proj.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                      AI Generate
+                    </Button>
+                  </div>
                   <Textarea placeholder="What does this project do?" value={proj.description} onChange={(e) => updateProject(proj.id, "description", e.target.value)} rows={2} />
                 </div>
                 <div>
